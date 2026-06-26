@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>CF Translator</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 260px;
+      padding: 16px;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 13px;
+      color: #333;
+      background: #fff;
+    }
+    h3 {
+      margin: 0 0 4px;
+      color: #3b5998;
+      font-size: 15px;
+      font-weight: 700;
+    }
+    .sub {
+      font-size: 11px;
+      color: #888;
+      margin-bottom: 14px;
+    }
+    label {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #555;
+    }
+    select {
+      width: 100%;
+      padding: 7px 8px;
+      border: 1px solid #b0c4de;
+      border-radius: 4px;
+      font-size: 13px;
+      background: #fff;
+      margin-bottom: 14px;
+      cursor: pointer;
+    }
+    select:focus {
+      outline: none;
+      border-color: #3b5998;
+      box-shadow: 0 0 0 2px rgba(59,89,152,.15);
+    }
+    button {
+      width: 100%;
+      padding: 8px 0;
+      background: #3b5998;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: background .15s;
+    }
+    button:hover { background: #2d4373; }
+    button:active { opacity: .85; }
+    #status {
+      text-align: center;
+      margin-top: 10px;
+      font-size: 12px;
+      color: #888;
+      min-height: 16px;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #e0e0e0;
+      margin: 10px 0;
+    }
+    .note {
+      font-size: 11px;
+      color: #aaa;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h3>&#x1F310; CF Translator</h3>
+  <p class="sub">Smart translation for Codeforces problem statements</p>
+
+  <label for="lang">Target language:</label>
+  <select id="lang">
+    <option value="vi">Vietnamese (Ti&#x1EBF;ng Vi&#x1EC7;t)</option>
+    <option value="zh">Chinese (&#x4E2D;&#x6587;)</option>
+    <option value="hi">Hindi (&#x0939;&#x093F;&#x0928;&#x094D;&#x0926;&#x0940;)</option>
+    <option value="ru">Russian (&#x0420;&#x0443;&#x0441;&#x0441;&#x043A;&#x0438;&#x0439;)</option>
+    <option value="ja">Japanese (&#x65E5;&#x672C;&#x8A9E;)</option>
+    <option value="ko">Korean (&#xD55C;&#xAD6D;&#xC5B4;)</option>
+    <option value="fr">French (Fran&ccedil;ais)</option>
+    <option value="de">German (Deutsch)</option>
+    <option value="pt">Portuguese (Portugu&ecirc;s)</option>
+    <option value="ar">Arabic (&#x0627;&#x0644;&#x0639;&#x0631;&#x0628;&#x064A;&#x0629;)</option>
+    <option value="bn">Bengali (&#x09AC;&#x09BE;&#x0982;&#x09B2;&#x09BE;)</option>
+    <option value="en">English</option>
+  </select>
+
+  <button id="save">Save &#x1F4A1; Apply to current tab</button>
+  <div id="status"></div>
+
+  <hr>
+  <p class="note">
+    Open a Codeforces problem page,<br>then click the toolbar buttons to translate.
+  </p>
+
+  <script src="popup.js"></script>
+</body>
+</html>
