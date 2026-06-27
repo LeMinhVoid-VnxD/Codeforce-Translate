@@ -24,7 +24,7 @@ const LANG_LABEL = {
 const MATH_RE = /\$\$\$([\s\S]+?)\$\$\$|\$\$([\s\S]+?)\$\$|\$([\s\S]+?)\$|\\\(([\s\S]+?)\\\)/g;
 const ORDINAL_RE = /\b([a-z])-(?:th|st|nd|rd)\b/g;
 const SUBSCRIPT_RE = /\b[a-zA-Z]+_(?:[a-zA-Z0-9]|\{[^}]*\})/g;
-const CP_VAR_RE = /\b([ijkmnxyzpqrstuvw])\b/g;
+const CP_VAR_RE = /\b([a-z])\b/g;
 const MATH_MARK = /<<<M(\d+)>>>/g;
 
 function preserveMath(text) {
