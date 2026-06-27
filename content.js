@@ -91,11 +91,11 @@ function collectTextNodes(root) {
 //  TRANSLATION API
 // ============================================================
 async function transGoogle(text, lang) {
-  const r = await fetch(
+  const url =
     'https://translate.googleapis.com/translate_a/single' +
     '?client=gtx&sl=auto&tl=' + encodeURIComponent(lang) +
-    '&dt=t&q=' + encodeURIComponent(text)
-  );
+    '&dt=t&q=' + encodeURIComponent(text);
+  const r = await fetch(url);
   if (!r.ok) throw new Error('Google HTTP ' + r.status);
   const d = await r.json();
   if (!d || !d[0]) throw new Error('Bad Google response');
@@ -103,11 +103,11 @@ async function transGoogle(text, lang) {
 }
 
 async function transMyMemory(text, lang) {
-  const r = await fetch(
+  const url =
     'https://api.mymemory.translated.net/get' +
     '?q=' + encodeURIComponent(text) +
-    '&langpair=en%7C' + encodeURIComponent(lang)
-  );
+    '&langpair=en%7C' + encodeURIComponent(lang);
+  const r = await fetch(url);
   if (!r.ok) throw new Error('MyMemory HTTP ' + r.status);
   const d = await r.json();
   if (d.responseStatus === 200 && d.responseData) {
@@ -120,51 +120,37 @@ async function translateOne(text, lang) {
   if (!text.trim()) return text;
   const { cleaned, blocks } = preserveMath(text);
   if (!cleaned.trim()) return text;
-  try { return restoreMath(await transGoogle(cleaned, lang), blocks); }
-  catch { try { return restoreMath(await transMyMemory(cleaned, lang), blocks); }
-  catch { return text; } }
+  try {
+    const r = await transGoogle(cleaned, lang);
+    return restoreMath(r, blocks);
+  } catch (e1) {
+    try {
+      const r = await transMyMemory(cleaned, lang);
+      return restoreMath(r, blocks);
+    } catch {
+      return text;
+    }
+  }
 }
 
 // ============================================================
 //  BATCH TRANSLATION
 // ============================================================
-const SEP = '\n[===CF-SPLIT===]\n';
+const CONCURRENCY = 5;
 
 async function translateAll(texts, lang) {
-  if (texts.length === 0) return [];
-  if (texts.length === 1) return [await translateOne(texts[0], lang)];
-
-  // Batch all texts into one API call
-  const combined = texts.join(SEP);
-  const { cleaned, blocks } = preserveMath(combined);
-  if (!cleaned.trim()) return texts;
-  try {
-    const translated = await transGoogle(cleaned, lang);
-    const restored = restoreMath(translated, blocks);
-    const parts = restored.split(SEP);
-    while (parts.length < texts.length) parts.push(texts[parts.length]);
-    return parts.slice(0, texts.length);
-  } catch {
-    // Fallback: translate individually, 10 at a time (no math re-wrap needed)
-    const out = texts.slice();
-    for (let i = 0; i < texts.length; i += 10) {
-      const batch = [];
-      for (let j = i; j < Math.min(i + 10, texts.length); j++) {
-        batch.push(
-          texts[j].trim()
-            ? (async () => {
-                const { cleaned, blocks } = preserveMath(texts[j]);
-                try { return restoreMath(await transMyMemory(cleaned, lang), blocks); }
-                catch { return texts[j]; }
-              })()
-            : texts[j]
-        );
-      }
-      const res = await Promise.all(batch);
-      for (let k = 0; k < res.length; k++) out[i + k] = res[k];
+  const out = new Array(texts.length);
+  for (let i = 0; i < texts.length; i += CONCURRENCY) {
+    const batch = [];
+    const idxs = [];
+    for (let j = i; j < Math.min(i + CONCURRENCY, texts.length); j++) {
+      idxs.push(j);
+      batch.push(translateOne(texts[j], lang).catch(() => texts[j]));
     }
-    return out;
+    const res = await Promise.all(batch);
+    for (let k = 0; k < res.length; k++) out[idxs[k]] = res[k];
   }
+  return out;
 }
 
 // ============================================================
