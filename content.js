@@ -60,7 +60,7 @@ function restoreMath(text, blocks) {
 // ============================================================
 function shouldSkip(el) {
   return el.matches && el.matches(
-    'code, pre, .tex-math, .tex-graphics, .tex-string'
+    'code, pre, .tex-math, .tex-graphics, .tex-string, cf-math'
   );
 }
 
@@ -162,8 +162,19 @@ async function doTranslate() {
   renderToolbar();
 
   try {
+    // Global pass: extract math delimiters across entire HTML (handles
+    // formulas spanning element boundaries, e.g. $$$...$$$ across text nodes)
+    const mathBlocks = [];
+    const safeHTML = STATE.originalHTML.replace(
+      /(\s*)(?:\$\$\$[\s\S]+?\$\$\$|\$\$[\s\S]+?\$\$|\$[\s\S]+?\$|\\\([\s\S]+?\\\))(\s*)/g,
+      (m, pre, post) => {
+        mathBlocks.push(pre + m.trim() + post);
+        return '<cf-math data-i="' + (mathBlocks.length - 1) + '"></cf-math>';
+      }
+    );
+
     const tmp = document.createElement('div');
-    tmp.innerHTML = STATE.originalHTML;
+    tmp.innerHTML = safeHTML;
     const nodes = collectTextNodes(tmp);
 
     if (nodes.length === 0) {
@@ -172,7 +183,11 @@ async function doTranslate() {
       const texts = nodes.map((n) => n.textContent);
       const translated = await translateAll(texts, STATE.lang);
       nodes.forEach((n, i) => { n.textContent = translated[i]; });
-      STATE.translatedHTML = tmp.innerHTML;
+      // Restore global math markers
+      STATE.translatedHTML = tmp.innerHTML.replace(
+        /<cf-math[^>]*data-i="(\d+)"[^>]*><\/cf-math>/g,
+        (_, i) => mathBlocks[+i] || ''
+      );
     }
   } catch (err) {
     console.error('[CF Translator]', err);
