@@ -21,7 +21,6 @@ const LANG_LABEL = {
 // ============================================================
 //  MATH & CODE PRESERVATION
 // ============================================================
-const MATH_RE = /\$\$\$([\s\S]+?)\$\$\$|\$\$([\s\S]+?)\$\$|\$([\s\S]+?)\$|\\\(([\s\S]+?)\\\)/g;
 const ORDINAL_RE = /\b([a-z])-(?:th|st|nd|rd)\b/g;
 const SUBSCRIPT_RE = /\b[a-zA-Z]+_(?:[a-zA-Z0-9]|\{[^}]*\})/g;
 const CP_VAR_RE = /\b([b-z])\b/g;
@@ -48,6 +47,10 @@ function preserveMath(text) {
       blocks.push(m);
       return '<<<M' + (blocks.length - 1) + '>>>';
     })
+    .replace(/@@G(\d+)@@/g, (m) => {
+      blocks.push(m);
+      return '<<<M' + (blocks.length - 1) + '>>>';
+    })
     .replace(CP_VAR_RE, (m) => {
       blocks.push(m);
       return '<<<M' + (blocks.length - 1) + '>>>';
@@ -65,7 +68,7 @@ function restoreMath(text, blocks) {
 // ============================================================
 function shouldSkip(el) {
   return el.matches && el.matches(
-    'code, pre, .tex-math, .tex-graphics, .tex-string, cf-math'
+    'code, pre, .tex-math, .tex-graphics, .tex-string'
   );
 }
 
@@ -167,14 +170,14 @@ async function doTranslate() {
   renderToolbar();
 
   try {
-    // Global pass: extract math delimiters across entire HTML (handles
-    // formulas spanning element boundaries, e.g. $$$...$$$ across text nodes)
+    // Global pass: extract math delimiters across entire HTML
+    // using @@G...@@ text markers that stay inline in text nodes
     const mathBlocks = [];
     const safeHTML = STATE.originalHTML.replace(
       /(\s*)(?:\$\$\$[\s\S]+?\$\$\$|\$\$[\s\S]+?\$\$|\$[\s\S]+?\$|\\\([\s\S]+?\\\))(\s*)/g,
       (m, pre, post) => {
-        mathBlocks.push(pre + m.trim() + post);
-        return '<cf-math data-i="' + (mathBlocks.length - 1) + '"></cf-math>';
+        mathBlocks.push(m.trim());
+        return pre + '@@G' + (mathBlocks.length - 1) + '@@' + post;
       }
     );
 
@@ -190,7 +193,7 @@ async function doTranslate() {
       nodes.forEach((n, i) => { n.textContent = translated[i]; });
       // Restore global math markers
       STATE.translatedHTML = tmp.innerHTML.replace(
-        /<cf-math[^>]*data-i="(\d+)"[^>]*><\/cf-math>/g,
+        /@@G(\d+)@@/g,
         (_, i) => mathBlocks[+i] || ''
       );
     }
