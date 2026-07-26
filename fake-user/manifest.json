@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "Fake User",
+  "version": "1.0.0",
+  "description": "Visually replace Codeforces handle, rating & rank with any user — perfect for streaming",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": ["activeTab", "storage"],
+  "host_permissions": [
+    "https://codeforces.com/api/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "Fake User",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://codeforces.com/*",
+        "https://*.codeforces.com/*"
+      ],
+      "js": ["content/fakeuser.js"],
+      "run_at": "document_end"
+    }
+  ]
+}
