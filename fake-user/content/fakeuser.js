@@ -18,6 +18,7 @@ let realHandle = '';
 let obs = null;
 let badgeEl = null;
 let badgeTimer = null;
+let mutating = false;
 
 function getRankClass(user) {
   return RANK_CLASS[(user.rank || '').toLowerCase()] || 'user-gray';
@@ -36,34 +37,35 @@ function ratingColor(rating) {
 
 function detectRealHandle() {
   const links = document.querySelectorAll('.lang-chooser a[href*="/profile/"]');
-  if (links.length) return links[0].textContent.trim();
-  const all = document.querySelectorAll('a[href*="/profile/"]');
-  for (const a of all) {
+  for (const a of links) {
     const t = a.textContent.trim();
-    if (t && !t.includes(' ') && /^[a-zA-Z0-9_]+$/.test(t)) return t;
+    if (t && /^[a-zA-Z0-9_]+$/.test(t)) return t;
   }
   return '';
+}
+
+function setLinkToFake(a) {
+  if (!target || !realHandle) return;
+  if (a.textContent.trim() !== realHandle) return;
+  const cls = getRankClass(target);
+  a.textContent = target.handle;
+  a.href = '/profile/' + target.handle;
+  a.className = a.className.replace(/user-\w+/g, '').trim() + ' ' + cls;
+  if ((target.rank || '').toLowerCase().includes('legendary')) {
+    a.innerHTML = '<span class="legendary-user-first-letter">'
+      + target.handle[0] + '</span>' + target.handle.slice(1);
+  }
 }
 
 function replaceTopbar() {
   if (!target || !realHandle) return;
   const links = document.querySelectorAll('.lang-chooser a[href*="/profile/"]');
-  for (const a of links) {
-    if (a.textContent.trim() !== realHandle) continue;
-    const cls = getRankClass(target);
-    a.textContent = target.handle;
-    a.href = '/profile/' + target.handle;
-    a.className = a.className.replace(/user-\w+/g, '').trim() + ' ' + cls;
-    if ((target.rank || '').toLowerCase().includes('legendary')) {
-      a.innerHTML = '<span class="legendary-user-first-letter">' + target.handle[0] + '</span>' + target.handle.slice(1);
-    }
-    const parent = a.parentNode;
-    const spans = parent.querySelectorAll('span[style*="color"]');
-    for (const s of spans) {
-      if (/^\d+$/.test(s.textContent.trim())) {
-        s.textContent = String(target.rating || '');
-        s.style.color = ratingColor(target.rating);
-      }
+  for (const a of links) setLinkToFake(a);
+  const spans = document.querySelectorAll('.lang-chooser span[style*="color"]');
+  for (const s of spans) {
+    if (/^\d+$/.test(s.textContent.trim())) {
+      s.textContent = String(target.rating || '');
+      s.style.color = ratingColor(target.rating);
     }
   }
 }
@@ -71,29 +73,41 @@ function replaceTopbar() {
 function replaceProfileLinks() {
   if (!target || !realHandle) return;
   const all = document.querySelectorAll('a[href*="/profile/"]');
-  for (const a of all) {
-    if (a.textContent.trim() !== realHandle) continue;
-    const cls = getRankClass(target);
-    a.textContent = target.handle;
-    if (a.href) a.href = '/profile/' + target.handle;
-    a.className = a.className.replace(/user-\w+/g, '').trim() + ' ' + cls;
-    if ((target.rank || '').toLowerCase().includes('legendary')) {
-      a.innerHTML = '<span class="legendary-user-first-letter">' + target.handle[0] + '</span>' + target.handle.slice(1);
-    }
-  }
+  for (const a of all) setLinkToFake(a);
 }
 
-function replaceTextWalker() {
-  if (!target || !realHandle) return;
-  const walker = document.createTreeWalker(
-    document.body || document.documentElement,
-    NodeFilter.SHOW_TEXT, null, false
-  );
+function walkTextNodes(root, cb) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode(n) {
+      let el = n.parentElement;
+      while (el) {
+        if (el.tagName === 'SCRIPT' || el.tagName === 'STYLE') return NodeFilter.FILTER_REJECT;
+        el = el.parentElement;
+      }
+      return NodeFilter.FILTER_ACCEPT;
+    },
+  }, false);
   let n;
-  while ((n = walker.nextNode())) {
+  while ((n = walker.nextNode())) cb(n);
+}
+
+function replaceTextInPage() {
+  if (!target || !realHandle) return;
+  walkTextNodes(document.body || document.documentElement, (n) => {
     if (n.textContent.includes(realHandle)) {
       n.textContent = n.textContent.split(realHandle).join(target.handle);
     }
+  });
+  if (document.title.includes(realHandle)) {
+    document.title = document.title.split(realHandle).join(target.handle);
+  }
+}
+
+function fixProfileURL() {
+  if (!target) return;
+  const path = location.pathname;
+  if (realHandle && path.includes('/profile/' + realHandle)) {
+    history.replaceState(null, '', '/profile/' + target.handle);
   }
 }
 
@@ -119,19 +133,22 @@ function showBadge() {
 }
 
 function applyAll() {
-  replaceTopbar();
-  replaceProfileLinks();
-  replaceTextWalker();
-  if (document.title.includes(realHandle)) {
-    document.title = document.title.split(realHandle).join(target.handle);
-  }
-  showBadge();
+  if (mutating) return;
+  mutating = true;
   try {
-    chrome.runtime.sendMessage({ action: 'fakeUserActive', handle: target.handle });
-  } catch (e) {}
+    replaceTopbar();
+    replaceProfileLinks();
+    replaceTextInPage();
+    fixProfileURL();
+    if (!badgeEl) showBadge();
+    try { chrome.runtime.sendMessage({ action: 'fakeUserActive', handle: target.handle }); } catch (e) {}
+  } finally {
+    mutating = false;
+  }
 }
 
 async function activate(handle, userData) {
+  if (!handle) { deactivate(); return; }
   if (userData) {
     target = userData;
   } else {
