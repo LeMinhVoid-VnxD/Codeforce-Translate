@@ -11,7 +11,8 @@
   "permissions": ["activeTab", "storage"],
   "host_permissions": [
     "https://translate.googleapis.com/*",
-    "https://api.mymemory.translated.net/*"
+    "https://api.mymemory.translated.net/*",
+    "https://codeforces.com/api/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -39,6 +40,14 @@
       "js": ["censor.js"],
       "run_at": "document_start",
       "all_frames": true
+    },
+    {
+      "matches": [
+        "https://codeforces.com/*",
+        "https://*.codeforces.com/*"
+      ],
+      "js": ["fakeuser.js"],
+      "run_at": "document_idle"
     }
   ]
 }
